@@ -1,6 +1,18 @@
-asdfasdf
-{{ define "body" }}
-Title goes here
-
-{{template "list" . }}
-{{ end }}
+{{define "head"}}
+<title>Suas Listas</title>
+{{end}}
+{{define "content" }}
+<header>
+    <h1>Listas</h1>
+    <button>+</button>
+</header>
+<main>
+    <ul>
+        {{range $index, $data := .}}
+            {{template "_list" $data }}
+        {{else}}
+        {{template "_empty"}}
+        {{end}}
+    </ul>
+</main>
+{{end}}
