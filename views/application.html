@@ -3,9 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {{block "head" .}}<title>Document</title>{{end}}
+    {{block "head" .}}<title>Todo List</title>{{end}}
+    <link rel="stylesheet" href="assets/css/application.css">
+    <script src="assets/javascript/index.js"></script>
 </head>
-<body>
+<body class="light">
+    {{template "navbar" .}}
     {{block "content" .}}The content goes here{{end}}
 </body>
 </html>
