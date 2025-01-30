@@ -1,18 +1,13 @@
 {{define "head"}}
-<title>Suas Listas</title>
+<title>{{ Title }}</title>
 {{end}}
 {{define "content" }}
-<header>
-    <h1>Listas</h1>
-    {{template "button" .}}
-</header>
 <main>
+    {{ template "button" .}}
     <ul>
-        {{range $index, $data := .}}
-            {{template "_list" $data }}
-        {{else}}
-        {{template "_empty"}}
-        {{end}}
+        {{template "_list" "Dynamic Item"}}
+        <li>Lista 2</li>
+        <li>Lista 3</li>
     </ul>
 </main>
 {{end}}
