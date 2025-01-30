@@ -62,13 +62,7 @@ func (a *Application) ActionIndex() http.HandlerFunc {
 }
 
 func main() {
-	view := views.New(views.ViewConfig{
-		Namespace:             "views",
-		ComponentDir:          "components",
-		IsProductionMode:      false,
-		LayoutDefault:         "application",
-		TemplateFileExtension: ".html",
-	})
+	view := views.New()
 
 	app := NewApplication(view)
 

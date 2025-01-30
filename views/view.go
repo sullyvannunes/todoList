@@ -2,107 +2,114 @@ package views
 
 import (
 	"fmt"
-	"html/template"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
+	"text/template"
 )
 
-type ViewConfig struct {
-	Namespace             string
-	ComponentDir          string
-	IsProductionMode      bool
-	LayoutDefault         string
-	TemplateFileExtension string
-}
-
 type View struct {
-	namespace             string
-	componentDir          string
-	isProductionMode      bool
-	layoutDefault         string
-	templateFileExtension string
+	viewsMap       map[string]*template.Template
+	productionMode bool
 }
 
-func New(config ViewConfig) *View {
-	namespace := config.Namespace + "/"
-	templateFileExtension := ".html"
-	if config.TemplateFileExtension != "" {
-		templateFileExtension = config.TemplateFileExtension
-	}
-
+func New() *View {
 	return &View{
-		namespace:             namespace,
-		componentDir:          namespace + config.ComponentDir,
-		isProductionMode:      config.IsProductionMode,
-		layoutDefault:         config.LayoutDefault,
-		templateFileExtension: templateFileExtension,
+		viewsMap:       make(map[string]*template.Template),
+		productionMode: false,
 	}
 }
 
-func (v *View) Render(w io.Writer, tmplName string, data any) error {
-	return v.RenderWithLayout(w, v.layoutDefault, tmplName, data)
-}
-
-func (v *View) RenderWithLayout(w io.Writer, layoutName, tmplName string, data any) error {
-	fs := os.DirFS(v.componentDir)
-	comTmpls, err := template.ParseFS(fs, "*"+v.templateFileExtension)
-	if err != nil {
-		return fmt.Errorf("parse component templates: %w", err)
-	}
-
-	tmplPath := strings.Split(tmplName, "/")
-	fs = os.DirFS(v.namespace + tmplPath[0])
-
-	partialTmpls, err := template.ParseFS(fs, "_*"+v.templateFileExtension)
-	if err != nil {
-		return fmt.Errorf("parse component templates: %w", err)
-	}
-
-	t, err := template.ParseFiles(v.namespace + tmplName + v.templateFileExtension)
-	if err != nil {
-		return fmt.Errorf("parse template file: %w", err)
-	}
-
-	newTmpl, err := v.mergeTemplates(t, comTmpls)
-	if err != nil {
-		return fmt.Errorf("merge template and components: %w", err)
-	}
-
-	newTmpl, err = v.mergeTemplates(newTmpl, partialTmpls)
-	if err != nil {
-		return fmt.Errorf("merge template and partials: %w", err)
-	}
-
-	layout, err := template.ParseFiles(v.namespace + layoutName + v.templateFileExtension)
-	if err != nil {
-		return fmt.Errorf("parse layout template: %w", err)
-	}
-
-	finalTmpl, err := v.mergeTemplates(layout, newTmpl)
-	if err != nil {
-		return fmt.Errorf("merge template and layout: %w", err)
-	}
-
-	if err := finalTmpl.Execute(w, data); err != nil {
-		return fmt.Errorf("execute final template: %w", err)
+func (v *View) mergeTemplates(dst, src *template.Template) error {
+	for _, t := range src.Templates() {
+		if _, err := dst.AddParseTree(t.Name(), t.Tree); err != nil {
+			return fmt.Errorf("add parse tree %s: %w", t.Name(), err)
+		}
 	}
 
 	return nil
 }
 
-func (v *View) mergeTemplates(dst, src *template.Template) (*template.Template, error) {
-	dstClone, err := dst.Clone()
+func (v *View) addTemplates(dst *template.Template, pattern string) error {
+	fsys := os.DirFS("views")
+	filenames, err := fs.Glob(fsys, pattern)
 	if err != nil {
-		return nil, fmt.Errorf("clone dst template: %w", err)
+		return err
 	}
 
-	for _, t := range src.Templates() {
-		_, err := dstClone.AddParseTree(t.Name(), t.Tree)
-		if err != nil {
-			return nil, fmt.Errorf("add parse tree: %w", err)
+	if len(filenames) == 0 {
+		return nil
+	}
+
+	src, err := dst.ParseFS(fsys, pattern)
+	if err != nil {
+		return err
+	}
+
+	err = v.mergeTemplates(dst, src)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (v *View) Render(w io.Writer, tmplName string, data any) error {
+	return v.RenderWithLayout(w, "views/application.html", tmplName, data)
+}
+
+func (v *View) Execute(tmpl *template.Template, w io.Writer, data any) error {
+	return tmpl.Execute(w, data)
+}
+
+func (v *View) RenderWithLayout(w io.Writer, layoutName, tmplName string, data any) error {
+	if v.productionMode {
+		t, ok := v.viewsMap[tmplName]
+		if ok {
+			return v.Execute(t, w, data)
 		}
 	}
 
-	return dstClone, nil
+	file, _ := os.Open("views/" + tmplName + ".html")
+	b, _ := io.ReadAll(file)
+	tmpl, err := template.New("views/" + tmplName + ".html").Funcs(template.FuncMap{"Xablau": v.Xablau}).Parse(string(b))
+	if err != nil {
+		return err
+	}
+
+	if err = v.addTemplates(tmpl, "components/*.html"); err != nil {
+		return fmt.Errorf("add template %s: %w", "components/*.html", err)
+	}
+
+	prefix := strings.Split(tmplName, "/")[0]
+	if err = v.addTemplates(tmpl, prefix+"/_*.html"); err != nil {
+		return fmt.Errorf("add template %s: %w", prefix+"/_*.html", err)
+	}
+
+	layout, err := template.ParseFiles(layoutName)
+	if err != nil {
+		return err
+	}
+
+	if err = v.mergeTemplates(layout, tmpl); err != nil {
+		return err
+	}
+
+	layout.Funcs(template.FuncMap{
+		"Xablau": v.Xablau,
+	})
+
+	if err = v.Execute(layout, w, data); err != nil {
+		return err
+	}
+
+	v.viewsMap[tmplName] = layout
+
+	return nil
+}
+
+func (v *View) Xablau(data any) string {
+	fmt.Printf("%s %+v\n", "this is xablau", data)
+	return "asdf"
 }
