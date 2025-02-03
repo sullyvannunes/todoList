@@ -80,3 +80,48 @@ table {
     font-weight: lighter;
     color: var(--logo-font-color);
 }
+
+.content {
+    width: 1090px;
+    margin: 0 auto;
+}
+
+.header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 30px;
+}
+
+.btn {
+    border: 1px solid var(--main-border-color);
+    border-radius: 15px;
+    color: var(--logo-font-color);
+    background-color: var(--nav-bg-color);
+    min-width: 40px;
+    text-align: center;
+    padding: 5px;
+}
+
+.d-none {
+    display: none;
+}
+
+.d-block {
+    display: block;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.borderless {
+    border: none;
+}
+
+
+.py-10 {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
