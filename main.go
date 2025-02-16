@@ -1,18 +1,20 @@
 package main
 
 import (
-	"log"
-	"net/http"
-
-	"github.com/sullyvannunes/todo-list/application"
-	"github.com/sullyvannunes/todo-list/views"
+	"fmt"
+	"reflect"
 )
 
+type A struct {
+	Name  string
+	Value int
+}
+
 func main() {
-	view := views.New()
+	a := true
 
-	app := application.New(view)
+	v := reflect.ValueOf(a)
+	fmt.Println(v.IsZero())
+	fmt.Println(v)
 
-	log.Println("running on http://localhost:3030")
-	http.ListenAndServe(":3030", app)
 }
